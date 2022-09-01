@@ -35,6 +35,7 @@
 package net.imglib2.iterator;
 
 import net.imglib2.AbstractRealInterval;
+import net.imglib2.FinalRealInterval;
 import net.imglib2.Iterator;
 import net.imglib2.RealInterval;
 import net.imglib2.RealLocalizable;
@@ -56,35 +57,90 @@ public class LocalizingRealIntervalIterator extends AbstractRealInterval impleme
 
 	final protected double[] location;
 
+	protected double eps = 1e-9;
+
 	/**
-	 * Iterates an {@link RealInterval} with given <em>min</em> and <em>max</em> with
-	 * the provided step along each dimension.
+	 * Iterates an {@link RealInterval} using the provided step size along each dimension.
 	 *
 	 * @param interval the real interval
 	 * @param step iteration step
 	 */
-	public LocalizingRealIntervalIterator( final RealInterval interval, final double[] step )
+	public LocalizingRealIntervalIterator( final RealInterval interval, final double... step )
+	{
+		this( interval, true, step );
+	}
+
+	/**
+	 * Iterates an {@link RealInterval} with given <em>min</em> and <em>max</em> the
+	 * the provided step size along each dimension.
+	 *
+	 * @param min real interval min
+	 * @param max real interval max
+	 * @param step iteration steps
+	 */
+	public LocalizingRealIntervalIterator( final double[] min, final double[] max, final double... step )
+	{
+		this( min, max, true, step );
+	}
+
+	/**
+	 * Iterates an {@link RealInterval} using the provided step size along each dimension.
+	 *
+	 * @param interval the real interval
+	 * @param snapToWidth adjust steps to be an integer multiple of interval width
+	 * @param step iteration step
+	 */
+	public LocalizingRealIntervalIterator( final RealInterval interval, boolean snapToWidth, final double... step )
 	{
 		super( interval );
-		this.step = step;
+		this.step = snapToWidth ? adjustSteps( this, fillWithLast( numDimensions(), step )) : fillWithLast( numDimensions(), step );
 		this.location = new double[ interval.numDimensions() ];
 		reset();
 	}
 
 	/**
 	 * Iterates an {@link RealInterval} with given <em>min</em> and <em>max</em> the
-	 * the provided step along each dimension.
+	 * the provided step size along each dimension.
 	 *
 	 * @param min real interval min
-	 * @param max real interval min
+	 * @param max real interval max
+	 * @param snapToWidth adjust steps to be an integer multiple of interval width
 	 * @param step iteration steps
 	 */
-	public LocalizingRealIntervalIterator( final double[] min, final double[] max, final double[] step )
+	public LocalizingRealIntervalIterator( final double[] min, final double[] max, boolean snapToWidth, final double... step )
 	{
 		super( min, max );
-		this.step = step;
+		this.step = snapToWidth ? adjustSteps( this, fillWithLast( numDimensions(), step )) : fillWithLast( numDimensions(), step );
 		this.location = new double[ numDimensions() ];
 		reset();
+	}
+
+	/**
+	 * Iterates an {@link RealInterval} using the given number of samples per dimension.
+	 *
+	 * @param interval the real interval
+	 * @param numSteps the number of steps per dimension
+	 */
+	public static LocalizingRealIntervalIterator createWithSteps( final RealInterval interval, final int... numSteps )
+	{
+		return new LocalizingRealIntervalIterator( interval, stepsFromSamples( interval, numSteps ));
+	}
+	
+	/**
+	 * Iterates an {@link RealInterval} using the given number of samples per dimension.
+	 *
+	 * @param interval the real interval
+	 * @param numSteps the number of steps per dimension
+	 */
+	public static LocalizingRealIntervalIterator createWithSteps( final double[] min, final double[] max, final int... numSteps )
+	{
+		final FinalRealInterval itvl = new FinalRealInterval( min, max );
+		return new LocalizingRealIntervalIterator( itvl, stepsFromSamples( itvl, numSteps ));
+	}
+	
+	public void setEpsilon( final double eps )
+	{
+		this.eps = eps;
 	}
 
 	@Override
@@ -98,7 +154,7 @@ public class LocalizingRealIntervalIterator extends AbstractRealInterval impleme
 	public boolean hasNext()
 	{
 		for( int d = 0; d < numDimensions(); d++ )
-			if( (location[ d ] + step[ d ]) <= realMax( d ))
+			if( (location[ d ] + step[ d ]) <= realMax( d ) + eps )
 			{
 				return true;
 			}
@@ -150,7 +206,7 @@ public class LocalizingRealIntervalIterator extends AbstractRealInterval impleme
 		for( int d = 0; d < numDimensions(); d++ )
 		{
 			fwdDim( d );
-			if( location[ d ] <= realMax(d))
+			if( location[ d ] <= realMax(d) + eps)
 				break;
 			else
 				location[ d ] = realMin( d );
@@ -160,6 +216,100 @@ public class LocalizingRealIntervalIterator extends AbstractRealInterval impleme
 	private void fwdDim( final int d )
 	{
 		location[ d ] += step[ d ];
+	}
+
+	/**
+	 * Returns step sizes per dimension such that there are numSamples[i] steps for the ith dimension.
+	 * <p>
+	 * numSamples may be of length less than itvl.numDimensions(), in which case this method uses
+	 * the last value (highest index) of numSamplesa for all subsequent dimensions. For example,
+	 * passing a 3D interval, but numSamples [32] will use 32 samples for all dimensions.
+	 * 
+	 * @param interval the interval
+	 * @param numSamples the number of steps per dimension
+	 * @return step size
+	 */
+	public static double[] stepsFromSamples( final RealInterval interval, final int... numSamples )
+	{
+		final int nd = interval.numDimensions();
+		double[] steps = new double[ nd ];
+		for( int i = 0; i < nd; i++ )
+		{
+			final int j = i >= numSamples.length ? numSamples.length - 1 : i;
+			steps[i] = (interval.realMax(i) - interval.realMin(i)) / ( numSamples[ j ] - 1 );
+		}
+		return steps;
+	}
+	
+
+	/**
+	 * Returns step sizes that are as close as possible to the provided steps, but
+	 * are an whole number multiple of the interval width.
+	 * 
+	 * @param interval the interval
+	 * @param steps the step sizes
+	 * @return new step sizes
+	 */
+	public static double[] adjustSteps( final RealInterval interval, final double... steps )
+	{
+		final int nd = interval.numDimensions();
+		final double[] stepsOut = new double[ nd ];
+		for( int i = 0; i < nd; i++ )
+		{
+			final double w = interval.realMax(i) - interval.realMin(i);
+			stepsOut[i] = w / Math.round( w / steps[i] );
+		}
+		return stepsOut;
+	}
+
+	/**
+	 * Returns an array of size at least N, containing the given values.
+	 * If the length of vales is >= N this returns values directly,
+	 * otherwise returns a new array of length N whose where the last (highest index) of
+	 * values is repeated.
+	 * 
+	 * @param N desired size
+	 * @param vlues
+	 * @return filled values
+	 */
+	public static double[] fillWithLast( final int N, final double... values )
+	{
+		if( values.length >= N )
+			return values;
+
+		final double[] stepsOut = new double[ N ];
+		for( int i = 0; i < N; i++ )
+		{
+			final int j = i >= values.length ? values.length - 1 : i;
+			stepsOut[i] = values[j];
+		}
+
+		return stepsOut;
+	}
+
+	/**
+	 * Returns an array of size at least N, containing the given values.
+	 * If the length of vales is >= N this returns values directly,
+	 * otherwise returns a new array of length N whose where the last (highest index) of
+	 * values is repeated.
+	 * 
+	 * @param N desired size
+	 * @param vlues
+	 * @return filled values
+	 */
+	public static int[] fillWithLast( final int N, final int... values )
+	{
+		if( values.length >= N )
+			return values;
+
+		final int[] stepsOut = new int[ N ];
+		for( int i = 0; i < N; i++ )
+		{
+			final int j = i >= values.length ? values.length - 1 : i;
+			stepsOut[i] = values[j];
+		}
+
+		return stepsOut;
 	}
 
 }
