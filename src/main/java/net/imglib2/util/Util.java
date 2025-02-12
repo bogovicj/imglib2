@@ -882,6 +882,26 @@ public class Util
 		return l;
 	}
 
+	final static public double[] float2double( final float[] i )
+	{
+		final double[] l = new double[ i.length ];
+
+		for ( int d = 0; d < l.length; ++d )
+			l[ d ] = i[ d ];
+
+		return l;
+	}
+
+	final static public float[] double2float( final float[] i )
+	{
+		final float[] l = new float[ i.length ];
+
+		for ( int d = 0; d < l.length; ++d )
+			l[ d ] = i[ d ];
+
+		return l;
+	}
+
 	/**
 	 * Cast {@code value} to {@code int}, checking for overflow.
 	 *

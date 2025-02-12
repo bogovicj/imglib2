@@ -51,7 +51,7 @@ package net.imglib2;
  *
  * @author Stephan Saalfeld
  */
-public interface RealInterval extends EuclideanSpace
+public interface RealInterval extends RealDimensions
 {
 	/**
 	 * Get the minimum in dimension d.
@@ -187,5 +187,10 @@ public interface RealInterval extends EuclideanSpace
 		final RealPoint max = new RealPoint( numDimensions() );
 		realMax( max );
 		return max;
+	}
+
+	default double realDimension( final int d )
+	{
+		return realMax( d ) - realMin( d );
 	}
 }

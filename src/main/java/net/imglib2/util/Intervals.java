@@ -39,10 +39,12 @@ import java.util.StringJoiner;
 import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
+import net.imglib2.FinalRealDimensions;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
 import net.imglib2.Localizable;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealDimensions;
 import net.imglib2.RealInterval;
 import net.imglib2.RealLocalizable;
 import net.imglib2.transform.integer.Mixed;
@@ -210,7 +212,7 @@ public class Intervals
 	 * @param interval
 	 *            the input interval
 	 * @param border
-	 *            how many pixels to add on every side
+	 *            how many pixels to add on the dimension
 	 * @param d
 	 *            in which dimension
 	 * @return expanded interval
@@ -225,6 +227,103 @@ public class Intervals
 		min[ d ] -= border;
 		max[ d ] += border;
 		return FinalInterval.wrap( min, max );
+	}
+
+	/*
+	 * Grow/shrink a real interval in all dimensions.
+	 *
+	 * Create a {@link FinalRealInterval}, which is the input real interval expanded
+	 * or shrunk along every dimension.
+	 *
+	 * @param interval
+	 *            the input real interval
+	 * @param border
+	 *            the amount to modify every dimension
+	 * @return expanded interval
+	 */
+	public static FinalRealInterval expandReal( final RealInterval interval, final double border )
+	{
+		final int n = interval.numDimensions();
+		final double[] min = new double[ n ];
+		final double[] max = new double[ n ];
+		interval.realMin( min );
+		interval.realMax( max );
+		for ( int d = 0; d < n; ++d )
+		{
+			min[ d ] -= border;
+			max[ d ] += border;
+		}
+		return FinalRealInterval.wrap(min, max);
+	}
+
+	/**
+	 * Grow/shrink a real interval in all dimensions.
+	 *
+	 * Create a {@link FinalRealInterval}, which is the input real interval expanded
+	 * or shrunk along every dimension.
+	 *
+	 * @param interval
+	 *            the input real interval
+	 * @param border
+	 *            the amount to modify every dimension
+	 * @return expanded interval
+	 */
+	public static FinalRealInterval expandReal( final RealInterval interval, final double... border )
+	{
+		return expandReal( interval, new FinalRealDimensions( border ) );
+	}
+
+	/**
+	 * Grow/shrink a real interval in all dimensions.
+	 *
+	 * Create a {@link FinalRealInterval}, which is the input real interval expanded
+	 * or shrunk along every dimension.
+	 *
+	 * @param interval
+	 *            the input real interval
+	 * @param border
+	 *            the amount to modify every dimension
+	 * @return expanded interval
+	 */
+	public static FinalRealInterval expandReal( final RealInterval interval, final RealDimensions border )
+	{
+		final int n = interval.numDimensions();
+		final double[] min = new double[ n ];
+		final double[] max = new double[ n ];
+		interval.realMin( min );
+		interval.realMax( max );
+		for ( int d = 0; d < n; ++d )
+		{
+			min[ d ] -= border.realDimension( d );
+			max[ d ] += border.realDimension( d );
+		}
+		return FinalRealInterval.wrap( min, max );
+	}
+
+	/**
+	 * Grow/shrink a real interval in one dimensions.
+	 *
+	 * Create a {@link FinalRealInterval}, which is the input real interval expanded
+	 * or shrunk along dimension d.
+	 *
+	 * @param interval
+	 *            the input real interval
+	 * @param border
+	 *            the amount to modify the dimension
+	 * @param d
+	 *            in which dimension
+	 * @return expanded interval
+	 */
+	public static FinalRealInterval expandReal( final RealInterval interval, final double border, final int d )
+	{
+		final int n = interval.numDimensions();
+		final double[] min = new double[ n ];
+		final double[] max = new double[ n ];
+		interval.realMin( min );
+		interval.realMax( max );
+		min[ d ] -= border;
+		max[ d ] += border;
+		return FinalRealInterval.wrap( min, max );
 	}
 
 	/**
@@ -922,6 +1021,21 @@ public class Intervals
 	}
 
 	/**
+	 * Tests whether two {@link RealDimensions} are the same.
+	 */
+	public static boolean equalRealDimensions( final RealDimensions a, final RealDimensions b )
+	{
+		if ( a.numDimensions() != b.numDimensions() )
+			return false;
+
+		for ( int d = 0; d < a.numDimensions(); ++d )
+			if ( a.realDimension( d ) != b.realDimension( d ) )
+				return false;
+
+		return true;
+	}
+
+	/**
 	 * Create a <code>long[]</code> with the dimensions of a {@link Dimensions}.
 	 *
 	 * <p>
@@ -1196,4 +1310,5 @@ public class Intervals
 			joiner.add( Long.toString( value.dimension( d ) ) );
 		return joiner.toString();
 	}
+
 }

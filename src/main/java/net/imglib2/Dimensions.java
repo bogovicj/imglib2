@@ -46,7 +46,7 @@ import net.imglib2.exception.InvalidDimensionsException;
  * @author Stephan Saalfeld
  * @author Philipp Hanslovsky
  */
-public interface Dimensions extends EuclideanSpace
+public interface Dimensions extends RealDimensions
 {
 	/**
 	 * Write the number of pixels in each dimension into long[].
@@ -78,6 +78,11 @@ public interface Dimensions extends EuclideanSpace
 	 * @param d
 	 */
 	long dimension( int d );
+
+	default double realDimension( int d )
+	{
+		return ( double ) dimension( d );
+	}
 
 	/**
 	 * Allocates a new long array with the dimensions of this object.

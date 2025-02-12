@@ -211,4 +211,9 @@ public interface Interval extends RealInterval, Dimensions
 		return max;
 	}
 
+	@Override
+	default double realDimension( final int d )
+	{
+		return Dimensions.super.realDimension( d );
+	}
 }
